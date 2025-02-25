@@ -40,13 +40,21 @@ def main():
         assigner.assign_modules()
     
     if args.full:
-        intermediate_file = "intermediate_bigg_mapping.csv"
-        
-        batch_fetch_bigg(args.input_file, intermediate_file)
-        
-        assigner = ModuleAssigner(intermediate_file, args.module_file, args.output_file)
+        intermediate_file_1 = "intermediate_metaflux.csv"  # 🔹 Étape 1 : transformation de METAFlux
+        intermediate_file_2 = "intermediate_bigg_mapping.csv"  # 🔹 Étape 2 : récupération des BiGG_ID
+
+        # 🔹 Étape 1 : Appliquer le traitement METAFlux → Sortie Metadata, Value
+        processor = MetaFluxProcessor(args.input_file, intermediate_file_1)
+        processor.process()
+
+        # 🔹 Étape 2 : Associer les BiGG_ID → Doit prendre en entrée le fichier METAFlux traité
+        batch_fetch_bigg(intermediate_file_1, intermediate_file_2)
+
+        # 🔹 Étape 3 : Assigner les modules (dernière étape du pipeline)
+        assigner = ModuleAssigner(intermediate_file_2, args.module_file, args.output_file)
         assigner.assign_modules()
-        print("Pipeline complète exécutée avec succès.")    
+
+        print("✅ Pipeline complète exécutée avec succès !")
     
 if __name__ == "__main__":
     main()

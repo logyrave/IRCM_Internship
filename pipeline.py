@@ -1,7 +1,7 @@
 import pandas as pd
 import requests
 import re
-from utils import extract_hmr_id, extract_mar_id, batch_fetch_bigg, process_metadata_column
+from utils import extract_hmr_id, extract_mar_id, batch_fetch_bigg, process_metadata_column, process_raw_Metaflux_output
 
 class MetaFluxProcessor:
     def __init__(self, input_file, output_file):
@@ -9,10 +9,17 @@ class MetaFluxProcessor:
         self.output_file = output_file
 
     def process(self):
-        df = pd.read_csv(self.input_file, header=None, names=["Metadata", "Value"])
-        df["MAR_ID"] = df["Metadata"].apply(extract_mar_id)
-        df.to_csv(self.output_file, index=False)
+        df = process_raw_Metaflux_output(self.input_file)
 
+        # 🔹 Assurer que MAR_ID est bien généré avant de passer à batch_fetch_bigg
+        df["MAR_ID"] = df["Metadata"].apply(extract_mar_id)
+
+        # 🔹 Supprimer les éventuelles lignes NaN introduites par l'opération
+        df.dropna(subset=["Metadata"], inplace=True)
+
+        df.to_csv(self.output_file, index=False)
+        print(f"✅ Fichier {self.output_file} généré avec succès !")
+        
 class HMRToHumanGEMConverter:
     def __init__(self, input_file, output_file):
         self.input_file = input_file
@@ -39,8 +46,6 @@ class ModuleAssigner:
         self.module_file = module_file
         self.output_file = output_file
         
-    
-
     def assign_modules(self):
         df = pd.read_csv(self.input_file)
         df = process_metadata_column(df)
@@ -52,4 +57,9 @@ class ModuleAssigner:
         df_unassigned = df[df["Module"].isna()].drop(columns=["Module"])
         df_assigned.to_csv(self.output_file, index=False)
         df_unassigned.to_csv("Unassigned_Genes.csv", index=False)
-        
+         
+         
+'''
+add feature that will compare the output with scFEA 
++ add global statistics (e.g. number of genes assigned, number of genes unassigned, etc.)
+'''

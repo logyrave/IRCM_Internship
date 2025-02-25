@@ -78,20 +78,49 @@ def extract_hmr_to_mar(text):
 
 def batch_fetch_bigg(input_file, output_file):
     """Lecture des données, conversion HMR -> MAR, et récupération des BiGG_ID en batch."""
-    df = pd.read_csv(input_file, header=None, names=["Metadata", "Value"])
+    df = pd.read_csv(input_file, low_memory=False)
+
+    # 🔹 Vérifier si la première ligne est une en-tête incorrecte
+    if "Metadata" in df.columns:
+        print("⚠️ En-tête détectée, elle sera ignorée.")
+        df = df.iloc[1:].reset_index(drop=True)
+
     df["MAR_ID"] = df["Metadata"].apply(extract_hmr_to_mar)
     
     mar_ids = df["MAR_ID"].dropna().unique().tolist()
     bigg_mapping = asyncio.run(fetch_all_bigg(mar_ids))
-    
+
     df["BiGG_ID"] = df["MAR_ID"].map(bigg_mapping)
     df.to_csv(output_file, index=False)
     print(df[["Metadata", "MAR_ID"]].drop_duplicates().head())  # Vérifie conversion
-    print("Récupération des BiGG_ID terminée.")
+    print("✅ Récupération des BiGG_ID terminée.")
     
     
 def process_metadata_column(df):
     """Sépare la colonne 'Metadata' en 'Batch' et 'Cell_Type' et supprime MAR_ID."""
     df[["Batch", "Cell_Type"]] = df["Metadata"].str.extract(r"(batch_\d+)\.celltype (\d+)")
-    df.drop(columns=["Metadata"], inplace=True)  # Supprime la colonne originale
+    df.drop(columns=["Metadata"], inplace=True)  
     return df
+
+def process_raw_Metaflux_output(input_file):
+    df = pd.read_csv(input_file, header=None, low_memory=False)
+
+    # 🔹 Vérifier qu'on a bien des colonnes numériques
+    if df.shape[1] < 2:
+        raise ValueError("Le fichier d'entrée doit contenir au moins 2 colonnes (Metadata + valeurs).")
+
+    df.columns = ["Metadata"] + [f"V{i}" for i in range(1, df.shape[1])]
+
+    df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric, errors="coerce")
+
+    df["Metadata"] = df["Metadata"].apply(lambda x: re.sub(r"HMR_(\d+)", r"MAR0\1", str(x)))
+
+    df["Value"] = df.iloc[:, 1:].mean(axis=1)
+
+    # 🔹 Supprimer les NaN éventuels dans Metadata
+    df.dropna(subset=["Metadata"], inplace=True)
+
+    df_final = df[["Metadata", "Value"]].copy()
+    print(f"\n✅ Transformation réussie ! Format final :\n{df_final.head()}\n")
+    return df_final
+
