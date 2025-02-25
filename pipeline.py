@@ -32,7 +32,7 @@ class BiGGIDFetcher:
         df = pd.read_csv(self.input_file)
         df["BiGG_ID"] = df["MAR_ID"].apply(fetch_bigg_from_api)
         df.to_csv(self.output_file, index=False)
-
+        
 class ModuleAssigner:
     def __init__(self, input_file, module_file, output_file):
         self.input_file = input_file
@@ -42,7 +42,7 @@ class ModuleAssigner:
     def assign_modules(self):
         df = pd.read_csv(self.input_file)
         df_modules = pd.read_csv(self.module_file)
-        df = df.merge(df_modules, how="left", left_on="BiGG_ID", right_on="Gene")
+        df = df.merge(df_modules, how="left", left_on="BiGG_ID", right_on="Gene").drop(columns=["Gene"])
         df_assigned = df.dropna(subset=["Module"])
         df_unassigned = df[df["Module"].isna()].drop(columns=["Module"])
         df_assigned.to_csv(self.output_file, index=False)

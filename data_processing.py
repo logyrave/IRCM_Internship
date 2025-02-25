@@ -1,5 +1,6 @@
 import argparse
 from pipeline import MetaFluxProcessor, BiGGIDFetcher, ModuleAssigner, HMRToHumanGEMConverter
+from utils import batch_fetch_bigg
 '''
 Guillaume PETIT IRCM Internship 2025 
 Supervisor : Pr Jacques Colinge
@@ -38,8 +39,14 @@ def main():
         assigner = ModuleAssigner(args.input_file, args.module_file, args.output_file)
         assigner.assign_modules()
     
-    if args.full: 
+    if args.full:
+        intermediate_file = "intermediate_bigg_mapping.csv"
         
+        batch_fetch_bigg(args.input_file, intermediate_file)
+        
+        assigner = ModuleAssigner(intermediate_file, args.module_file, args.output_file)
+        assigner.assign_modules()
+        print("Pipeline complète exécutée avec succès.")    
     
 if __name__ == "__main__":
     main()
