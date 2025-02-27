@@ -11,14 +11,14 @@ class MetaFluxProcessor:
     def process(self):
         df = process_raw_Metaflux_output(self.input_file)
 
-        # 🔹 Assurer que MAR_ID est bien généré avant de passer à batch_fetch_bigg
+        # Check MAR ID conversion b4 batch_fetch_bigg
         df["MAR_ID"] = df["Metadata"].apply(extract_mar_id)
 
-        # 🔹 Supprimer les éventuelles lignes NaN introduites par l'opération
+        # NaN dropout
         df.dropna(subset=["Metadata"], inplace=True)
 
         df.to_csv(self.output_file, index=False)
-        print(f"✅ Fichier {self.output_file} généré avec succès !")
+        print(f"✅ File {self.output_file} generated")
         
 class HMRToHumanGEMConverter:
     def __init__(self, input_file, output_file):

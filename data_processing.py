@@ -4,20 +4,33 @@ from utils import batch_fetch_bigg
 '''
 Guillaume PETIT IRCM Internship 2025 
 Supervisor : Pr Jacques Colinge
+
 Abstract of centent : This script as for purpose to automate the data processing of METAFlux, Compass, scFEA in order to 
                       benchmark the results of those tools
+
+Developed by : Guillaume PETIT
+Maintener : Guillaume PETIT
+
+---------------------------------------------------------------------------------------------------------------------------
+
+Intermediate argument are defined in order to troubleshoot the pipeline.
+Please use the following command to run the script :
+
+%bash%
+python3 data_processing.py --full --input_file=<PATH_TO_METAFLUX_RAW_OUTPUT>.csv --module_file=<PATH_TO_MODULE_GENE_ASSOCIATION_LONG_FORMAT>.csv --output_file=<PATH_TO_OUTPUT_NAME>.csv
+note : if output file doesn't exist, it will be created
 '''
 def main():
-    parser = argparse.ArgumentParser(description="Pipeline de traitement des données MetaFlux")
-    parser.add_argument("--full", action="store_true", help="process all steps to treat raw output")
-    parser.add_argument("--process_metaflux", action="store_true", help="Extraire les IDs MAR0xxxx depuis MetaFlux output")
-    parser.add_argument("--convert_hmr", action="store_true", help="Convertir les IDs HMR en Human-GEM")
-    parser.add_argument("--fetch_bigg", action="store_true", help="Récupérer les identifiants BiGG depuis MAR0xxxx via API MetabolicAtlas")
-    parser.add_argument("--assign_modules", action="store_true", help="Associer les BiGG IDs aux modules scFEA")
+    parser = argparse.ArgumentParser(description="Pipiline treatment for Metaflux output")
+    parser.add_argument("--full", action="store_true", help="treat raw output")
+    parser.add_argument("--process_metaflux", action="store_true", help="ID extraction")
+    parser.add_argument("--convert_hmr", action="store_true", help="Convert HMR IDs to HumanGEM IDs")
+    parser.add_argument("--fetch_bigg", action="store_true", help="fetch BiGG ID from HumanGEM IDs via API MetabolicAtlas")
+    parser.add_argument("--assign_modules", action="store_true", help="match BiGG ID to scFEA metabolic modules using given association table")
     
-    parser.add_argument("--input_file", type=str, required=True, help="Fichier d'entrée pour l'étape choisie")
-    parser.add_argument("--output_file", type=str, required=True, help="Fichier de sortie pour l'étape choisie")
-    parser.add_argument("--module_file", type=str, help="Fichier contenant la correspondance Gene_ID -> Module")
+    parser.add_argument("--input_file", type=str, required=True, help="Metaflux output file : expected format csv")
+    parser.add_argument("--output_file", type=str, required=True, help="Output file for the processed dat : csv")
+    parser.add_argument("--module_file", type=str, help="Association table between BiGG IDs and scFEA metabolic modules : expected format csv")
     
     args = parser.parse_args()
     
@@ -40,21 +53,21 @@ def main():
         assigner.assign_modules()
     
     if args.full:
-        intermediate_file_1 = "intermediate_metaflux.csv"  # 🔹 Étape 1 : transformation de METAFlux
-        intermediate_file_2 = "intermediate_bigg_mapping.csv"  # 🔹 Étape 2 : récupération des BiGG_ID
+        intermediate_file_1 = "intermediate_metaflux.csv"  # Metaflux transform
+        intermediate_file_2 = "intermediate_bigg_mapping.csv"  # BiGG ID fetcher
 
-        # 🔹 Étape 1 : Appliquer le traitement METAFlux → Sortie Metadata, Value
+        # step 1 : process Metaflux output
         processor = MetaFluxProcessor(args.input_file, intermediate_file_1)
         processor.process()
 
-        # 🔹 Étape 2 : Associer les BiGG_ID → Doit prendre en entrée le fichier METAFlux traité
+        # step 2 : fetch BiGG IDs
         batch_fetch_bigg(intermediate_file_1, intermediate_file_2)
 
-        # 🔹 Étape 3 : Assigner les modules (dernière étape du pipeline)
+        # step 3 : assign modules
         assigner = ModuleAssigner(intermediate_file_2, args.module_file, args.output_file)
         assigner.assign_modules()
 
-        print("✅ Pipeline complète exécutée avec succès !")
+        print("Done")
     
 if __name__ == "__main__":
     main()

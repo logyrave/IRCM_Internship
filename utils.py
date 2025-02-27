@@ -24,65 +24,65 @@ async def used in order to parallelize requests because the API can take some ti
 API_URL = "https://metabolicatlas.org/api/v2/reactions/{}?model=HumanGem"
 
 async def fetch_bigg(session, mar_id):
-    """Effectue une requête asynchrone pour récupérer l'ID BiGG d'un MAR_ID."""
+    """asynchrone request to fetch BiGG ID associated with MAR_ID."""
     
     url = API_URL.format(mar_id)
     try:
         async with session.get(url, headers={"accept": "application/json"}, ssl=False, timeout=10) as response:
             if response.status == 200:
                 data = await response.json()
-                print(f"✅ Réponse API pour {mar_id}: {json.dumps(data, indent=2)}")  # DEBUG API
+                print(f"API response for {mar_id}: {json.dumps(data, indent=2)}")  # DEBUG API
 
-                # Vérifier si BiGG existe dans la réponse JSON
+                # BiGG existence check :
                 bigg_entry = data.get("externalDbs", {}).get("BiGG", [])
                 return mar_id, bigg_entry[0]["id"] if bigg_entry else None
             else:
-                print(f"⚠️ Erreur HTTP {response.status} pour {mar_id}")
+                print(f"⚠️ HTTP protocole error {response.status} for {mar_id}")
                 return mar_id, None
     except Exception as e:
-        print(f"❌ Erreur lors de la récupération de {mar_id}: {e}")
+        print(f"❌ Fetch Error for {mar_id}: {e}")
         return mar_id, None
 
 async def fetch_all_bigg(mar_ids):
-    """Gère plusieurs requêtes asynchrones pour récupérer les IDs BiGG en batch."""
+    """parrarelise request by BiGG ID processed in batch."""
     async with aiohttp.ClientSession() as session:
         tasks = [fetch_bigg(session, mar_id) for mar_id in mar_ids]
         results = await asyncio.gather(*tasks)
 
-        # Afficher les résultats pour voir s'ils sont bien extraits
-        print("\n✅ Résumé des résultats BiGG récupérés :")
-        for mar, bigg in results[:10]:  # Affiche les 10 premiers résultats
+        # trooble shooting
+        print("\n Summary of API request result :")
+        for mar, bigg in results[:10]:  
             print(f"MAR_ID: {mar} -> BiGG_ID: {bigg}")
 
         return dict(results)
 
 def extract_hmr_to_mar(text):
-    """Gère les cas où Metadata contient :
-    1. Un ID MAR0xxxx → on le retourne directement.
-    2. Un ID HMR_xxxx → on le convertit en MAR0xxxx.
+    """Deal with both cases :
+    1. ID MAR0xxxx → returned.
+    2. ID HMR_xxxx → converted to MAR0xxxx.
     """
     text = str(text).strip()
 
-    # Cas où Metadata contient déjà MAR0xxxx
+    # Case where there is already a MAR0xxxx
     match_mar = re.search(r"(MAR0\d+)", text)
     if match_mar:
         return match_mar.group(1)
 
-    # Cas où Metadata contient HMR_xxxx → conversion en MAR0xxxx
+    # Converting HMR_xxxx to MAR0xxxx case
     match_hmr = re.search(r"HMR_(\d+)", text)
     if match_hmr:
-        return f"MAR0{match_hmr.group(1)}"  # Conversion en MAR0xxxx
+        return f"MAR0{match_hmr.group(1)}"  
 
-    # Si aucun des deux cas ne correspond, retourne None
+    # If no HMR / MAR ID identified then fuck off
     return None
 
 def batch_fetch_bigg(input_file, output_file):
-    """Lecture des données, conversion HMR -> MAR, et récupération des BiGG_ID en batch."""
+    """batch processing + ensure conversion ID."""
     df = pd.read_csv(input_file, low_memory=False)
 
-    # 🔹 Vérifier si la première ligne est une en-tête incorrecte
+    # check for header
     if "Metadata" in df.columns:
-        print("⚠️ En-tête détectée, elle sera ignorée.")
+        print("⚠️ Header detected, first line passed.")
         df = df.iloc[1:].reset_index(drop=True)
 
     df["MAR_ID"] = df["Metadata"].apply(extract_hmr_to_mar)
@@ -92,12 +92,12 @@ def batch_fetch_bigg(input_file, output_file):
 
     df["BiGG_ID"] = df["MAR_ID"].map(bigg_mapping)
     df.to_csv(output_file, index=False)
-    print(df[["Metadata", "MAR_ID"]].drop_duplicates().head())  # Vérifie conversion
-    print("✅ Récupération des BiGG_ID terminée.")
+    print(df[["Metadata", "MAR_ID"]].drop_duplicates().head())  # check conversion
+    print("BiGG ID fetching done")
     
     
 def process_metadata_column(df):
-    """Sépare la colonne 'Metadata' en 'Batch' et 'Cell_Type' et supprime MAR_ID."""
+    """First colonne separation in 1 colonne for each info"""
     df[["Batch", "Cell_Type"]] = df["Metadata"].str.extract(r"(batch_\d+)\.celltype (\d+)")
     df.drop(columns=["Metadata"], inplace=True)  
     return df
@@ -105,9 +105,9 @@ def process_metadata_column(df):
 def process_raw_Metaflux_output(input_file):
     df = pd.read_csv(input_file, header=None, low_memory=False)
 
-    # 🔹 Vérifier qu'on a bien des colonnes numériques
+    # type / dim check
     if df.shape[1] < 2:
-        raise ValueError("Le fichier d'entrée doit contenir au moins 2 colonnes (Metadata + valeurs).")
+        raise ValueError("1 columns detected, at least 2 expected. (WTF?)")
 
     df.columns = ["Metadata"] + [f"V{i}" for i in range(1, df.shape[1])]
 
@@ -117,10 +117,10 @@ def process_raw_Metaflux_output(input_file):
 
     df["Value"] = df.iloc[:, 1:].mean(axis=1)
 
-    # 🔹 Supprimer les NaN éventuels dans Metadata
+    # get the NaN out of the way
     df.dropna(subset=["Metadata"], inplace=True)
 
     df_final = df[["Metadata", "Value"]].copy()
-    print(f"\n✅ Transformation réussie ! Format final :\n{df_final.head()}\n")
+    print(f"\nTransformation sucessed ! Final format :\n{df_final.head()}\n")
     return df_final
 
