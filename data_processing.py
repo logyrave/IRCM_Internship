@@ -11,7 +11,7 @@ Abstract of centent : This script as for purpose to automate the data processing
 Developed by : Guillaume PETIT
 Maintener : Guillaume PETIT
 
----------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------
 
 Intermediate argument are defined in order to troubleshoot the pipeline.
 Please use the following command to run the script :
