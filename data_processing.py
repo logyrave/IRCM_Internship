@@ -17,7 +17,7 @@ Intermediate argument are defined in order to troubleshoot the pipeline.
 Please use the following command to run the script :
 
 %bash%
-python3 data_processing.py --full --input_file=<PATH_TO_METAFLUX_RAW_OUTPUT>.csv --module_file=<PATH_TO_MODULE_GENE_ASSOCIATION_LONG_FORMAT>.csv --output_file=<PATH_TO_OUTPUT_NAME>.csv
+python3 data_processing.py --full --input_file=<PATH_TO_METAFLUX_RAW_OUTPUT>.csv --module_file=<PATH_TO_MODULE_GENE_ASSOCIATION_TABLE_LONG_FORMAT>.csv --output_file=<PATH_TO_OUTPUT_NAME>.csv
 note : if output file doesn't exist, it will be created
 '''
 def main():
